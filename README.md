@@ -85,40 +85,42 @@ agree tick-for-tick or the suite fails.
 | --- | --- |
 | Network | **Base Sepolia** |
 | Chain ID | **84532** |
-| Block explorer | <https://sepolia.basescan.com> (contract links appear only after a real deployment) |
+| Block explorer | <https://sepolia.basescan.com> |
 | Deploy script | `script/Deploy.s.sol` — refuses any chain other than 84532 unless `ALLOW_OTHER_CHAIN=true` is set explicitly for local anvil testing |
 
 ### Deployment status
 
 | Field | Value |
 | --- | --- |
-| Deployment status | **Pending** — no deployment has been performed yet |
-| Contract address | **Not deployed** |
-| Deployment tx / block | Not available yet |
-| Explorer link (contract) | Not available yet |
+| Deployment status | **Deployed** — 2026-10-11, via `forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast` |
+| Contract address | [`0x2c81dBA21188704201C899C7810a67fA903B5171`](https://sepolia.basescan.com/address/0x2c81dBA21188704201C899C7810a67fA903B5171) |
+| Deployment tx | [`0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd`](https://sepolia.basescan.com/tx/0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd) |
+| Deployment block | `47964631` (receipt status `1` success, gas used `1,583,557`) |
+| Deployer | `0x81A4d25Ae3f981A67ab6098AA8Ea2b7B821d734E` |
+| Onchain sanity reads | `levelId() = "ghost-sprint-v1"`, `version() = "1.0.0"`, `MAX_INPUT_LENGTH() = 1200`, `TICK_RATE() = 60` |
+| Source verification | **Not verified yet** — the configured `BASESCAN_API_KEY` was rejected by the verifier preflight as an invalid API key (it contained an address-shaped value instead of an API key). Deployment itself succeeded without `--verify`. |
 
-These fields are intentionally blank. They are updated **only** after a real,
-verified Base Sepolia deployment is executed and its output recorded — no
-address, transaction, block number, or explorer link in this repository is
-fabricated. Until then `frontend/src/generated/deployment.ts` keeps
-`address: null` and the frontend shows an explicit "not configured" state.
+Every value above was taken from `broadcast/Deploy.s.sol/84532/run-latest.json`
+and confirmed with `cast receipt` / `cast call` against Base Sepolia — nothing
+is fabricated. `frontend/src/generated/deployment.ts` was produced from these
+exact values by `npm run sync:deployment`.
 
-**Missing prerequisites (why deployment is pending):** no deployer
-credentials are configured in this environment — `PRIVATE_KEY` and
-`BASE_SEPOLIA_RPC_URL` are unset, and no funded Base Sepolia testnet account
-is available. To resolve locally: fill in `.env` (created from
-`.env.example`), fund the testnet-only deployer from a faucet, then run
-`npm run deploy:sepolia` and the synchronization commands below. A verified
-Base Sepolia RPC endpoint (chain id 84532) was confirmed reachable; only the
-key and its funding are missing.
+To verify the source once a **real** BaseScan/Etherscan API key is configured
+in `.env`:
 
-### Local guest mode (available without deployment)
+```bash
+forge verify-contract 0x2c81dBA21188704201C899C7810a67fA903B5171 \
+  src/GhostSprint.sol:GhostSprint --chain 84532 --watch \
+  --etherscan-api-key "$BASESCAN_API_KEY"
+```
 
-The game is fully playable **without any deployment**: play, record, replay,
-and race the bundled demo ghost or your own local practice ghosts. In this
-mode onchain submission is disabled with a clear notice — **onchain
-submissions, the public leaderboard, and onchain-verified ghosts require a
-deployed contract** (see below).
+### Local guest mode (play without a wallet)
+
+The game is playable **without connecting a wallet**: play, record, replay,
+and race the bundled demo ghost or your own local practice ghosts. Connecting
+a Base Sepolia wallet enables **onchain submission** to the deployed contract
+above, the public leaderboard, and racing onchain-verified ghosts fetched
+from contract storage.
 
 ### Deploying the contract
 
@@ -174,18 +176,48 @@ be committed or printed):
    `frontend/src/generated/deployment.ts` still reads `address: null`, the
    frontend is correctly refusing to pretend the contract exists.
 
-### Fields to update after a real deployment
+### Onchain smoke test (deployed flow — executed 2026-10-11)
 
-Clearly identifiable, currently-pending values to replace (all verifiable
-against the broadcast output before editing):
+`script/SmokeTest.s.sol` submitted two real runs from the deployer wallet to
+the deployed contract (both confirmed in block `47964922`):
 
-- **This section's deployment status table** — status → Deployed, contract
-  address, deployment tx, block number, and the contract explorer link
-  (`<explorer>/address/<real address>`).
-- `frontend/src/generated/deployment.ts` — via `npm run sync:deployment`
-  (never by hand).
-- Optionally `frontend/.env.local` → `VITE_CONTRACT_ADDRESS` for local
-  overrides.
+| Run | Inputs | Contract-computed result | Tx |
+| --- | --- | --- | --- |
+| run #1 | canonical 141-tick log | **won — 141 ticks, 2350 ms** | [`0x5cf690c2…269669e`](https://sepolia.basescan.com/tx/0x5cf690c2c877c3d52ef2fbc3eedfc3ccb0d6e0d5e8554a42a200e5c31269669e) |
+| run #2 | same run behind 60 neutral ticks | won — 201 ticks, 3350 ms (**slower, PB untouched**) | [`0xd9353cf2…f707de9`](https://sepolia.basescan.com/tx/0xd9353cf2c83245e574a5e9a12c2a031cdb15ca8ffdcd5f7562379224cf707de9) |
+
+Checks performed **against the deployed bytecode** (not local simulations):
+
+- `runCount() = 2`; `getRun(1)` and `getRun(2)` carry the contract's own
+  tick/time values (`ticks * 1000 / 60` — no caller-supplied time exists);
+- **strict personal best**: `bestTime(deployer) = 2350`, `bestRunId = 1`
+  after the slower run; exactly one `PersonalBestImproved` event
+  (`previous = 0 → 2350`);
+- **input integrity**: `keccak256(getRunInputs(1))` equals the stored
+  `inputsHash` and the originally submitted bytes;
+- **client parity**: replaying the *chain-retrieved* input log in the TS
+  engine yields `won / 141 ticks / 2350 ms` — identical to the contract;
+- **rejections** (via `eth_call`, no state change): incomplete run →
+  `RunNotVerified(0, 50)` (not recorded), empty → `EmptyInputLog`,
+  1201-byte log → `InputLogTooLong(1201, 1200)`, byte `0x03` →
+  `InvalidInputByte(0, 3)`, unknown id → `UnknownRun(99)`; `runCount`
+  stayed `2`;
+- both `RunVerified` events contain the complete input log in their data
+  (replayable from chain logs alone).
+
+Reproduce (uses local `.env` credentials, spends a tiny amount of testnet
+gas):
+
+```bash
+CONTRACT_ADDRESS=0x2c81dBA21188704201C899C7810a67fA903B5171 \
+RUN_INPUTS_FAST=0x… RUN_INPUTS_PADDED=0x… \
+forge script script/SmokeTest.s.sol --rpc-url base_sepolia --broadcast
+```
+
+**Not tested:** browser-wallet submission through the frontend UI (this
+environment has no GUI wallet). The contract-side path that UI calls is what
+the checks above exercised directly; `npm run test:all` covers the client
+logic locally.
 
 ### Local anvil end-to-end (optional)
 

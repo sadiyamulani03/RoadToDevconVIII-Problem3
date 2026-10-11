@@ -36,6 +36,7 @@ const PATTERNS = [
     name: "hex private key",
     // 32-byte hex assigned to a key-ish name, or a bare PRIVATE_KEY= line
     re: /(?:private[_-]?key|secret[_-]?key|deployer[_-]?key|mnemonic)[^\n]{0,40}?(?:0x)?[0-9a-fA-F]{64}\b|PRIVATE_KEY\s*=\s*0x[0-9a-fA-F]{64}/g,
+    redact: true, // never print any part of key material
   },
   {
     name: "bare 64-hex secret in env-like file",
@@ -114,6 +115,11 @@ if (tracked) {
 
 for (const [file, origin] of scanSet) {
   const rel = relative(root, file);
+  // The local secret store `.env` is intentionally skipped for content
+  // scanning: real credentials are *supposed* to live there, and printing
+  // matches would echo key material into terminal output. Exposure safety is
+  // enforced by the structural checks below (must be gitignored + untracked).
+  if (rel === ".env") continue;
   let content;
   try {
     content = readFileSync(file, "utf8");
@@ -125,26 +131,36 @@ for (const [file, origin] of scanSet) {
     for (const match of content.matchAll(pattern.re)) {
       if (pattern.validate && !pattern.validate(match[0])) continue;
       const line = content.slice(0, match.index).split("\n").length;
-      findings.push({ file: rel, line, name: pattern.name, snippet: match[0].slice(0, 24) + "…" });
+      findings.push({
+        file: rel,
+        line,
+        name: pattern.name,
+        snippet: pattern.redact ? "[redacted]" : match[0].slice(0, 24) + "…",
+      });
     }
   }
 }
 
-// structural checks
-const envPath = join(root, ".env");
-if (existsSync(envPath)) {
-  const envContent = readFileSync(envPath, "utf8");
-  const nonEmpty = envContent
+// structural checks: the local secret store must be ignored AND untracked
+
+// .env.example must contain placeholders only (it is tracked by git)
+const envExamplePath = join(root, ".env.example");
+if (existsSync(envExamplePath)) {
+  const exampleContent = readFileSync(envExamplePath, "utf8");
+  const realValues = exampleContent
     .split("\n")
     .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-    .map((l) => l.slice(l.indexOf("=") + 1).trim())
-    .filter((v) => v !== "" && !/your|example|replace|<|https:\/\//i.test(v));
-  if (nonEmpty.length > 0) {
+    .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()])
+    .filter(
+      ([, v]) =>
+        v !== "" && !/your|example|replace|<|https:\/\//i.test(v),
+    );
+  if (realValues.length > 0) {
     findings.push({
-      file: ".env",
+      file: ".env.example",
       line: 0,
-      name: "non-placeholder value in .env",
-      snippet: `${nonEmpty.length} non-placeholder value(s)`,
+      name: "non-placeholder value in .env.example",
+      snippet: `${realValues.map(([k]) => k).join(", ")} (values withheld)`,
     });
   }
 }
