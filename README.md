@@ -85,7 +85,7 @@ agree tick-for-tick or the suite fails.
 | --- | --- |
 | Network | **Base Sepolia** |
 | Chain ID | **84532** |
-| Block explorer | <https://sepolia.basescan.com> |
+| Block explorer | <https://sepolia.basescan.org> |
 | Deploy script | `script/Deploy.s.sol` — refuses any chain other than 84532 unless `ALLOW_OTHER_CHAIN=true` is set explicitly for local anvil testing |
 
 ### Deployment status
@@ -93,20 +93,32 @@ agree tick-for-tick or the suite fails.
 | Field | Value |
 | --- | --- |
 | Deployment status | **Deployed** — 2026-10-11, via `forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast` |
-| Contract address | [`0x2c81dBA21188704201C899C7810a67fA903B5171`](https://sepolia.basescan.com/address/0x2c81dBA21188704201C899C7810a67fA903B5171) |
-| Deployment tx | [`0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd`](https://sepolia.basescan.com/tx/0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd) |
+| Contract address | [`0x2c81dBA21188704201C899C7810a67fA903B5171`](https://sepolia.basescan.org/address/0x2c81dBA21188704201C899C7810a67fA903B5171) |
+| Deployment tx | [`0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd`](https://sepolia.basescan.org/tx/0x726a1e9eff62cfaffee20d669beda59368488a61c037e5c63ff5142ef04c61fd) |
 | Deployment block | `47964631` (receipt status `1` success, gas used `1,583,557`) |
 | Deployer | `0x81A4d25Ae3f981A67ab6098AA8Ea2b7B821d734E` |
 | Onchain sanity reads | `levelId() = "ghost-sprint-v1"`, `version() = "1.0.0"`, `MAX_INPUT_LENGTH() = 1200`, `TICK_RATE() = 60` |
-| Source verification | **Not verified yet** — the configured `BASESCAN_API_KEY` was rejected by the verifier preflight as an invalid API key (it contained an address-shaped value instead of an API key). Deployment itself succeeded without `--verify`. |
+| Source verification | **Verified** — 2026-10-11: explorer reports `GhostSprint` (solc `v0.8.28+commit.7893614a`, optimizer runs `200`, EVM `cancun`, no constructor args); [view verified source](https://sepolia.basescan.org/address/0x2c81dBA21188704201C899C7810a67fA903B5171#code). Sourcify reports `exact_match` for chain 84532. |
 
 Every value above was taken from `broadcast/Deploy.s.sol/84532/run-latest.json`
 and confirmed with `cast receipt` / `cast call` against Base Sepolia — nothing
 is fabricated. `frontend/src/generated/deployment.ts` was produced from these
 exact values by `npm run sync:deployment`.
 
-To verify the source once a **real** BaseScan/Etherscan API key is configured
-in `.env`:
+### Source verification (confirmed 2026-10-11)
+
+Verification ran against **Base Sepolia only** (chain 84532) and was
+confirmed through the explorer's `getsourcecode` API — not merely by
+submitting the request. The explorer returns the published source
+(21,715 bytes) and ABI (5,915 bytes) for `GhostSprint` in
+`src/GhostSprint.sol`, compiled with `v0.8.28+commit.7893614a`, optimizer
+runs `200`, EVM `cancun`, and **no constructor arguments** — matching
+`foundry.toml` and `script/Deploy.s.sol` (`new GhostSprint()`) exactly.
+Sourcify independently reports `exact_match` for this address on chain
+84532.
+
+The command used (the key is read from the local gitignored `.env` and is
+never committed or printed):
 
 ```bash
 forge verify-contract 0x2c81dBA21188704201C899C7810a67fA903B5171 \
@@ -183,8 +195,8 @@ the deployed contract (both confirmed in block `47964922`):
 
 | Run | Inputs | Contract-computed result | Tx |
 | --- | --- | --- | --- |
-| run #1 | canonical 141-tick log | **won — 141 ticks, 2350 ms** | [`0x5cf690c2…269669e`](https://sepolia.basescan.com/tx/0x5cf690c2c877c3d52ef2fbc3eedfc3ccb0d6e0d5e8554a42a200e5c31269669e) |
-| run #2 | same run behind 60 neutral ticks | won — 201 ticks, 3350 ms (**slower, PB untouched**) | [`0xd9353cf2…f707de9`](https://sepolia.basescan.com/tx/0xd9353cf2c83245e574a5e9a12c2a031cdb15ca8ffdcd5f7562379224cf707de9) |
+| run #1 | canonical 141-tick log | **won — 141 ticks, 2350 ms** | [`0x5cf690c2…269669e`](https://sepolia.basescan.org/tx/0x5cf690c2c877c3d52ef2fbc3eedfc3ccb0d6e0d5e8554a42a200e5c31269669e) |
+| run #2 | same run behind 60 neutral ticks | won — 201 ticks, 3350 ms (**slower, PB untouched**) | [`0xd9353cf2…f707de9`](https://sepolia.basescan.org/tx/0xd9353cf2c83245e574a5e9a12c2a031cdb15ca8ffdcd5f7562379224cf707de9) |
 
 Checks performed **against the deployed bytecode** (not local simulations):
 
