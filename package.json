@@ -1,0 +1,27 @@
+{
+  "name": "ghost-sprint",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Speedrun Ghosts — onchain speedrunning game on Base Sepolia",
+  "type": "module",
+  "scripts": {
+    "generate:level": "node scripts/generate-level.mjs",
+    "check:level": "node scripts/check-level.mjs",
+    "gen:vectors": "tsx scripts/gen-vectors.mjs",
+    "check:vectors": "tsx scripts/gen-vectors.mjs --check",
+    "solve": "tsx scripts/solve-level.mjs",
+    "sync:abi": "node scripts/sync-abi.mjs",
+    "sync:deployment": "node scripts/sync-deployment.mjs",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "test:contracts": "forge test",
+    "test:frontend": "npm --prefix frontend run test",
+    "test:all": "npm run check:level && npm run check:vectors && npm run test:contracts && npm run test:frontend && npm run scan:secrets",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "lint": "forge fmt --check && forge lint && npm --prefix frontend run lint",
+    "build:frontend": "npm --prefix frontend run build",
+    "deploy:sepolia": "forge script script/Deploy.s.sol --rpc-url base_sepolia --broadcast --verify"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

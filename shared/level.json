@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "name": "Ghost Sprint",
+    "id": "ghost-sprint-v1",
+    "description": "Compact right-to-the-flag speedrun level. Avoid spikes, clear two gaps and a wall, reach the flag."
+  },
+  "world": {
+    "width": 480,
+    "height": 272
+  },
+  "player": {
+    "spawnX": 16,
+    "spawnY": 232,
+    "width": 12,
+    "height": 16
+  },
+  "solids": [
+    { "name": "groundA", "x": 0, "y": 248, "w": 144, "h": 24 },
+    { "name": "groundB", "x": 192, "y": 248, "w": 112, "h": 24 },
+    { "name": "groundC", "x": 344, "y": 248, "w": 136, "h": 24 },
+    { "name": "ledgeP1", "x": 96, "y": 216, "w": 48, "h": 10 },
+    { "name": "wallW1", "x": 264, "y": 216, "w": 12, "h": 32 },
+    { "name": "stepP2", "x": 312, "y": 216, "w": 24, "h": 10 }
+  ],
+  "hazards": [
+    { "name": "spikesA", "x": 56, "y": 238, "w": 24, "h": 10 },
+    { "name": "spikesB", "x": 232, "y": 238, "w": 16, "h": 10 },
+    { "name": "spikesC", "x": 392, "y": 238, "w": 24, "h": 10 }
+  ],
+  "goal": { "x": 448, "y": 200, "w": 16, "h": 48 },
+  "physics": {
+    "tickRate": 60,
+    "maxInputLength": 1200,
+    "moveSpeed": 768,
+    "jumpVelocity": 1536,
+    "gravity": 102,
+    "terminalVelocity": 1792,
+    "positionScale": 256
+  },
+  "input": {
+    "bitLeft": 1,
+    "bitRight": 2,
+    "bitJump": 4,
+    "invalidMask": 248,
+    "note": "One uint8 per tick. Bits 0..2 only. Value 3 (left+right) and 7 (left+right+jump) are rejected: the two direction bits may never both be set. Any of bits 3..7 set is rejected."
+  }
+}
