@@ -9,6 +9,9 @@ broadcast/
 .env.*.local
 *.keystore
 
+# Vercel CLI link state (created by `vercel link`)
+.vercel/
+
 # Node (no trailing slash: also matches node_modules symlinks)
 node_modules
 dist/

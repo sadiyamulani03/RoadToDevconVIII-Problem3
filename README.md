@@ -26,6 +26,35 @@ npm run build:frontend && npm --prefix frontend run preview
 
 Controls: **←/→ or A/D** move, **Space/W/↑/Z** jump, **R** restart.
 
+## Live demo
+
+**<https://road-to-devcon-viii-problem3.vercel.app>** — Vercel production
+deployment built from `frontend/` in this repository.
+
+Post-deploy verification (headless Chromium against the live URL): page
+loads with **zero console errors and zero failed requests**; the header
+shows the real contract address and Base Sepolia; a run starts and advances
+(tick/time/HUD update, hazard death handled); the leaderboard renders the
+deployed contract's onchain ghosts (runs #1/#2); all JSON-RPC calls to
+`sepolia.base.org` return 200 with CORS allowing the live origin. Browser
+wallet connection and onchain submission were additionally tested manually
+in a normal browser with a wallet (no wallet exists in the automated
+environment, so that path is not automated here).
+
+Hosting configuration (Vercel project `road-to-devcon-viii-problem3`):
+
+| Setting | Value |
+| --- | --- |
+| Root directory | `frontend` |
+| Build command | `npm run build` (`tsc -b && vite build`) |
+| Output directory | `dist` |
+| Environment variables | **none required** — no secrets ship to the browser; the contract address is baked in by `npm run sync:deployment` and the RPC is Base Sepolia's public CORS-enabled endpoint |
+| Redeploy (CLI) | `cd frontend && vercel deploy --prod --yes` |
+
+Any static host serving `frontend/dist` works with the same settings. For a
+Git-integration deploy, point the provider at this repo with root directory
+`frontend`.
+
 ## How a run becomes a leaderboard entry
 
 1. **Play** in the browser. The client records exactly one `uint8` per tick:
@@ -226,10 +255,12 @@ RUN_INPUTS_FAST=0x… RUN_INPUTS_PADDED=0x… \
 forge script script/SmokeTest.s.sol --rpc-url base_sepolia --broadcast
 ```
 
-**Not tested:** browser-wallet submission through the frontend UI (this
-environment has no GUI wallet). The contract-side path that UI calls is what
-the checks above exercised directly; `npm run test:all` covers the client
-logic locally.
+**Browser-wallet flow:** submission through the frontend UI was tested
+manually in a browser with a wallet; the contract-side path that UI calls is
+what the checks above exercised directly, and `npm run test:all` covers the
+client logic locally. In the automated environment (no wallet extension)
+the production site was verified headlessly for boot, gameplay, RPC reads,
+and error-free loading instead — see **Live demo**.
 
 ### Local anvil end-to-end (optional)
 
@@ -265,3 +296,25 @@ forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 - **Frontend integrity** — input logs fetched from the chain are re-hashed
   and checked against the contract's stored `inputsHash` before being used
   as raceable ghosts.
+
+## Submission checklist
+
+- **Repository:** <https://github.com/sadiyamulani03/RoadToDevconVIII-Problem3>
+- **Contract:** `0x2c81dBA21188704201C899C7810a67fA903B5171` on Base Sepolia
+  (chain 84532) — source
+  [verified on the explorer](https://sepolia.basescan.org/address/0x2c81dBA21188704201C899C7810a67fA903B5171#code),
+  Sourcify `exact_match`
+- **Live frontend:** <https://road-to-devcon-viii-problem3.vercel.app>
+- **Build & tests (last run):** `npm run test:all` → level/vectors OK,
+  Foundry 45/45, Vitest 50/50, secret scan clean; `typecheck`, `lint`
+  (forge fmt + forge lint + eslint), and `vite build` all exit 0
+- **Description:** Ghost Sprint is an onchain speedrunner — one `uint8` per
+  60 Hz tick, and the `GhostSprint` contract re-simulates the entire input
+  log with deterministic integer physics to derive the finish time itself;
+  verified runs double as replayable ghosts for racing
+- **Remaining limitations:** browser-wallet submission is manually tested,
+  not automated; explorer source page requires no action but the browser
+  console cannot be inspected outside a real browser session; the public
+  RPC is Base Sepolia's free endpoint (rate-limited)
+- **Manual steps for the organizer:** none required — if the competition
+  form asks for the fields above, copy them from this checklist
