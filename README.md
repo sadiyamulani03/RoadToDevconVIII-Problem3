@@ -79,27 +79,113 @@ agree tick-for-tick or the suite fails.
 
 ## Deployment (Base Sepolia)
 
-Deployment needs a funded **testnet-only** key; nothing is committed:
+### Target network
 
-```bash
-cp .env.example .env        # then fill PRIVATE_KEY / BASE_SEPOLIA_RPC_URL
-source .env
-npm run deploy:sepolia      # forge script script/Deploy.s.sol --broadcast --verify
-```
+| | |
+| --- | --- |
+| Network | **Base Sepolia** |
+| Chain ID | **84532** |
+| Block explorer | <https://sepolia.basescan.com> (contract links appear only after a real deployment) |
+| Deploy script | `script/Deploy.s.sol` — refuses any chain other than 84532 unless `ALLOW_OTHER_CHAIN=true` is set explicitly for local anvil testing |
 
-The deploy script refuses to run on any chain other than 84532 unless
-`ALLOW_OTHER_CHAIN=true` is set explicitly (local anvil testing only).
+### Deployment status
 
-After it succeeds, record the address for the frontend:
+| Field | Value |
+| --- | --- |
+| Deployment status | **Pending** — no deployment has been performed yet |
+| Contract address | **Not deployed** |
+| Deployment tx / block | Not available yet |
+| Explorer link (contract) | Not available yet |
 
-```bash
-DEPLOYED_ADDRESS=0x… DEPLOYED_BLOCK=… node scripts/sync-deployment.mjs
-# or: frontend/.env.local → VITE_CONTRACT_ADDRESS=0x…
-```
+These fields are intentionally blank. They are updated **only** after a real,
+verified Base Sepolia deployment is executed and its output recorded — no
+address, transaction, block number, or explorer link in this repository is
+fabricated. Until then `frontend/src/generated/deployment.ts` keeps
+`address: null` and the frontend shows an explicit "not configured" state.
 
-Until then the frontend runs in **guest mode**: you can play, record, replay
-and race the bundled demo ghost, and it will clearly say the contract is not
-configured — it never invents an address.
+**Missing prerequisites (why deployment is pending):** no deployer
+credentials are configured in this environment — `PRIVATE_KEY` and
+`BASE_SEPOLIA_RPC_URL` are unset, and no funded Base Sepolia testnet account
+is available. To resolve locally: fill in `.env` (created from
+`.env.example`), fund the testnet-only deployer from a faucet, then run
+`npm run deploy:sepolia` and the synchronization commands below. A verified
+Base Sepolia RPC endpoint (chain id 84532) was confirmed reachable; only the
+key and its funding are missing.
+
+### Local guest mode (available without deployment)
+
+The game is fully playable **without any deployment**: play, record, replay,
+and race the bundled demo ghost or your own local practice ghosts. In this
+mode onchain submission is disabled with a clear notice — **onchain
+submissions, the public leaderboard, and onchain-verified ghosts require a
+deployed contract** (see below).
+
+### Deploying the contract
+
+Prerequisites (credentials stay local — `.env` is gitignored and must never
+be committed or printed):
+
+1. Copy the template and fill in values locally:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure in `.env`:
+   - `PRIVATE_KEY` — a **testnet-only** deployer key (never a mainnet key).
+   - `BASE_SEPOLIA_RPC_URL` — Base Sepolia RPC endpoint.
+   - `BASESCAN_API_KEY` — only needed by the verification workflow; the
+     repository's deploy command runs `forge ... --verify`, so supply it for
+     `npm run deploy:sepolia`, or invoke `forge script` without `--verify`
+     if you skip contract-source verification.
+
+3. Fund the deployer with Base Sepolia testnet ETH from a faucet (the
+   account must cover deployment gas).
+
+4. Run the repository's deployment command:
+
+   ```bash
+   source .env
+   npm run deploy:sepolia
+   ```
+
+   On success the script prints the **real** deployed address
+   (`GhostSprint deployed at: 0x…`), the deployer, chain id, `levelId`, and
+   `version` — record the address and the deployment block from the forge
+   broadcast output (`broadcast/Deploy.s.sol/…/run-latest.json`).
+
+5. Synchronize the generated frontend configuration with the real
+   deployment (never hand-edit generated files):
+
+   ```bash
+   npm run sync:abi                                # out/GhostSprint.sol → frontend/src/abi
+   DEPLOYED_ADDRESS=0x… DEPLOYED_BLOCK=… node scripts/sync-deployment.mjs
+   # equivalently: npm run sync:deployment with the same environment variables
+   ```
+
+6. Re-run the checks and verify the frontend picks up the real address:
+
+   ```bash
+   npm run test:all
+   ```
+
+   After synchronization the header must show the contract address (and a
+   Base Sepolia explorer link) instead of the guest-mode banner; if
+   `frontend/src/generated/deployment.ts` still reads `address: null`, the
+   frontend is correctly refusing to pretend the contract exists.
+
+### Fields to update after a real deployment
+
+Clearly identifiable, currently-pending values to replace (all verifiable
+against the broadcast output before editing):
+
+- **This section's deployment status table** — status → Deployed, contract
+  address, deployment tx, block number, and the contract explorer link
+  (`<explorer>/address/<real address>`).
+- `frontend/src/generated/deployment.ts` — via `npm run sync:deployment`
+  (never by hand).
+- Optionally `frontend/.env.local` → `VITE_CONTRACT_ADDRESS` for local
+  overrides.
 
 ### Local anvil end-to-end (optional)
 
